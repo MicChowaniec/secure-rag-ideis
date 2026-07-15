@@ -20,8 +20,11 @@ Uruchom `Uruchom_Chatbot_IDEIS.exe` i wybierz scenariusze demonstracyjne albo wy
   jedynie typy danych;
 - przebieg 3: pytanie o pizzę/pogodę kończy się `out_of_scope`.
 
-Następnie pokaż ostatnie trzy rekordy `data/audit.jsonl`. Nie pokazuj prawdziwego tokena
-Telegrama ani prawdziwych danych osobowych.
+Terminal pokazuje automatycznie wszystkie dziewięć etapów pipeline'u dla każdej
+wiadomości, w tym backendy modeli, confidence score, encje, słowa kluczowe, źródła i
+czasy wykonania. W przebiegu z PII wejście jest już zamaskowane. Na końcu można dodatkowo
+pokazać ostatnie trzy rekordy `data/audit.jsonl`. Nie pokazuj prawdziwego tokena Telegrama
+ani prawdziwych danych osobowych.
 
 ## 4. Rzetelność techniczna
 

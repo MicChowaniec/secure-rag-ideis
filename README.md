@@ -102,6 +102,7 @@ Najważniejsze zmienne środowiskowe:
 | `SAFETY_THRESHOLD` | `0.65` | próg decyzji klasyfikatora bezpieczeństwa |
 | `RAG_TOP_K` | `3` | liczba różnych stron przekazanych do promptu |
 | `RAG_MIN_SCORE` | `0.08` | minimalne podobieństwo wymagane do odpowiedzi |
+| `TERMINAL_TRACE` | `true` | pokazuje bezpieczny przebieg pipeline'u w terminalu |
 | `USE_PRIVACY_MODEL` | `false` | włącza właściwy `openai/privacy-filter` |
 | `USE_BIELIK_GUARD` | `false` | włącza właściwy model Bielik Guard |
 
@@ -126,6 +127,13 @@ limity wejścia, filtr halucynacji, 40 przypadków granicznych i osobne asercje 
 Pełna definicja granic znajduje się w `docs/BOUNDARIES_AND_TESTS.md`.
 
 ## Scenariusze do prezentacji
+
+Podczas obsługi każdej wiadomości terminal automatycznie pokazuje dziewięcioetapowy,
+zanonimizowany przebieg: Telegram/Input, Privacy Filter, Bielik Guard wraz z confidence
+score i pełną taksonomią, NER i słowa kluczowe, Retriever RAG, Prompt Builder, backend
+generacji, filtr wyjścia oraz odpowiedź. Etapy zatrzymane przez wcześniejszy filtr są
+jawnie oznaczane jako `POMINIĘTY`. Wyświetlanie można wyłączyć przez
+`TERMINAL_TRACE=false`; niezależny audyt JSONL nadal pozostaje włączony.
 
 1. Pytanie domenowe: „Ile razy mogę zdawać egzamin poprawkowy?” — pełna ścieżka RAG,
    strony źródłowe i filtr wyjścia.

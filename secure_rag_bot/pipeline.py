@@ -66,7 +66,9 @@ class SecureRAGPipeline:
         )
         self.nlp = nlp or NLPAnalyzer()
         self.llm = llm or OllamaLLM(settings.ollama_url, settings.ollama_chat_model)
-        self.audit = audit or AuditLogger(settings.audit_log_path)
+        self.audit = audit or AuditLogger(
+            settings.audit_log_path, console=settings.terminal_trace
+        )
 
     def _finish(self, response: BotResponse) -> BotResponse:
         self.audit.write(response, response.privacy.masked_text)

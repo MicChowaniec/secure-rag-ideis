@@ -218,6 +218,7 @@ try {
     $config['PII_POLICY'] = 'mask'
     $config['BLOCK_PROMPT_INJECTION'] = 'true'
     $config['RAG_TOP_K'] = '3'
+    $config['TERMINAL_TRACE'] = 'true'
     $config['HF_HOME'] = "$env:LOCALAPPDATA\SecureRagBot\hf_cache"
 
     if (-not $config.Contains('TELEGRAM_BOT_TOKEN') -or [string]::IsNullOrWhiteSpace($config['TELEGRAM_BOT_TOKEN'])) {

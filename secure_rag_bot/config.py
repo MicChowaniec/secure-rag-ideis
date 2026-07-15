@@ -40,6 +40,7 @@ class Settings:
     rag_min_score: float = 0.08
     vector_db_path: Path = Path("data/vector_store.sqlite3")
     audit_log_path: Path = Path("data/audit.jsonl")
+    terminal_trace: bool = True
     max_input_chars: int = 4000
     block_prompt_injection: bool = True
 
@@ -71,6 +72,7 @@ class Settings:
             rag_min_score=float(os.getenv("RAG_MIN_SCORE", "0.08")),
             vector_db_path=Path(os.getenv("VECTOR_DB_PATH", "data/vector_store.sqlite3")),
             audit_log_path=Path(os.getenv("AUDIT_LOG_PATH", "data/audit.jsonl")),
+            terminal_trace=_bool("TERMINAL_TRACE", True),
             max_input_chars=int(os.getenv("MAX_INPUT_CHARS", "4000")),
             block_prompt_injection=_bool("BLOCK_PROMPT_INJECTION", True),
         )
