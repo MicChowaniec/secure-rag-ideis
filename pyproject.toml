@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "secure-student-rag-bot"
+version = "0.1.0"
+description = "Bezpieczny chatbot Telegram RAG dla regulaminu studiow"
+requires-python = ">=3.11"
+dependencies = [
+  "pypdf>=5.0,<7",
+  "python-telegram-bot>=21,<23",
+]
+
+[project.optional-dependencies]
+models = [
+  "torch>=2.4",
+  "transformers>=4.51",
+  "accelerate>=1.0",
+]
+dev = ["pytest>=8", "ruff>=0.9"]
+
+[project.scripts]
+secure-rag-ingest = "secure_rag_bot.ingest:main"
+secure-rag-demo = "secure_rag_bot.demo:main"
+secure-rag-telegram = "secure_rag_bot.telegram_app:main"
+secure-rag-check = "secure_rag_bot.preflight:main"
+secure-rag-eval = "secure_rag_bot.evaluation:main"
+
+[tool.setuptools.packages.find]
+include = ["secure_rag_bot*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100

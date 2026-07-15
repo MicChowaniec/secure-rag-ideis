@@ -1,0 +1,281 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setdefaultlanguage{polish}
+\setmainfont{DejaVu Sans}
+\setsansfont{DejaVu Sans}
+\setmonofont{DejaVu Sans Mono}
+
+\usepackage[a4paper,margin=15mm,headheight=15pt]{geometry}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,backgrounds}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{pdflscape}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{navy}{HTML}{17324D}
+\definecolor{blue}{HTML}{2B6F9F}
+\definecolor{cyan}{HTML}{DCEFF7}
+\definecolor{green}{HTML}{DDEFE5}
+\definecolor{orange}{HTML}{F8E8CF}
+\definecolor{redsoft}{HTML}{F5DDDD}
+\definecolor{grayline}{HTML}{AEB8C2}
+\definecolor{textgray}{HTML}{38444F}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{Bezpieczny chatbot RAG - dokumentacja UML}
+\rhead{Uniwersytet DSW Ideis}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+\setlist[itemize]{leftmargin=5mm,itemsep=1pt,topsep=2pt}
+\titlespacing*{\section}{0pt}{1.1ex}{0.5ex}
+
+\tikzset{
+  flow/.style={draw=navy, rounded corners=2mm, fill=cyan, minimum height=10mm,
+    align=center, font=\small\sffamily, inner xsep=3mm},
+  policy/.style={draw=navy, rounded corners=2mm, fill=orange, minimum height=10mm,
+    align=center, font=\small\sffamily, inner xsep=3mm},
+  arrow/.style={-{Latex[length=2.3mm]}, semithick, draw=navy},
+  umlclass/.style={draw=navy, rounded corners=1.5mm, fill=white, align=left,
+    font=\sffamily, inner sep=0pt, text width=42mm},
+  relation/.style={-{Latex[length=2.2mm]}, semithick, draw=blue},
+  compose/.style={-{Latex[length=2.2mm]}, semithick, draw=navy},
+  seqhead/.style={draw=navy, rounded corners=1mm, fill=cyan, minimum width=24mm,
+    minimum height=9mm, align=center, font=\scriptsize\bfseries\sffamily},
+  message/.style={-{Latex[length=1.8mm]}, thin, draw=navy},
+  return/.style={-{Latex[length=1.8mm]}, thin, dashed, draw=blue}
+}
+
+\newcommand{\classbox}[3]{%
+  \begin{minipage}{42mm}
+  \centering\colorbox{navy}{\parbox{38mm}{\centering\color{white}\bfseries #1}}\\[-1pt]
+  \raggedright\scriptsize\textcolor{textgray}{#2}\\[-1pt]
+  \rule{42mm}{0.35pt}\\[-4pt]
+  \raggedright\scriptsize #3
+  \end{minipage}%
+}
+
+\begin{document}
+
+\begin{center}
+  {\color{navy}\sffamily\bfseries\LARGE Bezpieczny chatbot RAG w Telegramie}\par
+  \vspace{2mm}
+  {\large Dokumentacja UML i krótkie omówienie projektu}\par
+  \vspace{1mm}
+  {\small Temat: asystent regulaminu studiów - numer indeksu 13897 - aktualizacja 15.07.2026}
+\end{center}
+
+\vspace{2mm}
+\section*{Cel i zakres}
+
+System jest lokalnym asystentem regulaminu studiów działającym w Telegramie. Korzysta z
+dokumentu PDF oraz z kuratorowanego wyciągu z oficjalnej strony Uniwersytetu DSW Ideis
+Kraków. Wiadomość użytkownika jest normalizowana, filtrowana pod kątem danych wrażliwych,
+klasyfikowana przez Bielik Guard i analizowana metodami NER. Następnie hybrydowy retriever
+porównuje zapytanie z embeddingami zapisanymi w SQLite. Baza zawiera 59 fragmentów.
+
+Telegram przechowuje maksymalnie trzy ostatnie, już zamaskowane wiadomości. Historia jest
+używana wyłącznie dla krótkich dopowiedzeń, takich jak ``ile mam czasu?'' lub ``jak się
+odwołać?''. Jednoznaczne fakty mogą zostać zbudowane przez politykę deterministyczną bez
+wywołania modelu generatywnego. W pozostałych przypadkach odpowiedź przygotowuje lokalny LLM
+uruchamiany przez Ollamę, a wynik przechodzi kontrolę ugruntowania i filtry wyjściowe.
+
+\begin{center}
+\begin{tikzpicture}[node distance=3.2mm,scale=0.90,transform shape]
+  \node[flow] (tg) {Telegram +\\zamaskowana historia};
+  \node[flow, right=of tg] (privacy) {Privacy Filter\\maskowanie PII};
+  \node[flow, right=of privacy] (guard) {Bielik Guard\\wejście};
+  \node[flow, right=of guard] (nlp) {NER i bramka\\domenowa};
+  \node[flow, below=7mm of nlp] (rag) {Retriever hybrydowy\\SQLite + embeddingi};
+  \node[policy, left=of rag] (facts) {FactPolicy\\odpowiedź dowodowa};
+  \node[flow, left=of facts] (llm) {Lokalny LLM\\Ollama - gdy potrzebny};
+  \node[flow, left=of llm] (output) {Grounding + filtry\\wyjściowe};
+  \draw[arrow] (tg) -- (privacy);
+  \draw[arrow] (privacy) -- (guard);
+  \draw[arrow] (guard) -- (nlp);
+  \draw[arrow] (nlp) -- (rag);
+  \draw[arrow] (rag) -- (facts);
+  \draw[arrow] (facts) -- node[above,font=\scriptsize]{fallback} (llm);
+  \draw[arrow] (facts.south) -- ++(0,-4mm) -| (output.south);
+  \draw[arrow] (llm) -- (output);
+\end{tikzpicture}
+\end{center}
+
+\section*{Komponenty i źródła wiedzy}
+
+\begin{tabularx}{\textwidth}{@{}>{\bfseries\color{navy}\raggedright\arraybackslash}p{43mm}X@{}}
+\toprule
+Komponent & Odpowiedzialność \\
+\midrule
+SecureRAGPipeline & Koordynuje filtry, kontekst rozmowy, retrieval, generację, grounding i audyt. \\
+PrivacyFilter + SafetyClassifier & Maskują PII oraz klasyfikują wejście i wyjście przez Bielik Guard. \\
+VectorStore + Embedder & Przechowują 59 fragmentów i realizują ranking embeddingowy oraz BM25. \\
+FactPolicy & Buduje krótkie odpowiedzi dla faktów jednoznacznie związanych ze źródłem. \\
+OllamaLLM & Generuje odpowiedź tylko wtedy, gdy nie wystarcza bezpieczna reguła dowodowa. \\
+Ingest PDF/TEXT & Indeksuje PDF oraz pliki MD/TXT będące kontrolowanymi wyciągami ze stron WWW. \\
+AuditLogger & Zapisuje statusy, encje, czasy i źródła bez surowych danych wrażliwych. \\
+\bottomrule
+\end{tabularx}
+
+\vspace{2mm}
+\textbf{Źródła:} regulamin studiów IDEIS 2025/2026 oraz wyciąg z oficjalnych stron
+\url{https://www.ideis.pl/krakow/} i \url{https://www.ideis.pl/krakow/kontakt}.
+
+\textbf{Weryfikacja:} 31/31 testów jednostkowych, 40/40 przypadków granicznych i 11/11
+testów faktograficznych z lokalnym RAG. Testy obejmują m.in. PII, prompt injection,
+literówki, pytania spoza domeny, ugruntowanie liczb, kontekst dopowiedzeń i dane Krakowa.
+
+\begin{landscape}
+{\Large\bfseries UML - diagram klas i zależności\par}
+\vspace{4mm}
+
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[umlclass] (telegram) at (0,5.8) {\classbox{TelegramApp}
+    {pipeline, chat\_data.safe\_history}
+    {+ message(update, context)\\+ start(update, context)}};
+
+  \node[umlclass, text width=50mm] (pipeline) at (6.5,5.8) {\begin{minipage}{50mm}
+    \centering\colorbox{navy}{\parbox{46mm}{\centering\color{white}\bfseries SecureRAGPipeline}}\\[-1pt]
+    \raggedright\scriptsize\textcolor{textgray}{settings, store, privacy, safety, nlp, llm, audit}\\[-1pt]
+    \rule{50mm}{0.35pt}\\[-4pt]
+    \raggedright\scriptsize + handle(text, conversation\_context): BotResponse\\
+    + is\_followup\_query(text, context): bool
+    \end{minipage}};
+
+  \node[umlclass] (response) at (13,5.8) {\classbox{BotResponse}
+    {text, status, sources, timings, backend}
+    {+ debug\_dict(): dict}};
+
+  \node[umlclass] (privacy) at (0,1.2) {\classbox{PrivacyFilter}
+    {model, regex, mask policy}
+    {+ analyze(text): PrivacyResult}};
+
+  \node[umlclass] (safety) at (4.8,1.2) {\classbox{SafetyClassifier}
+    {Bielik Guard, threshold, fallback}
+    {+ analyze(text): SafetyResult}};
+
+  \node[umlclass] (nlp) at (9.6,1.2) {\classbox{NLPAnalyzer}
+    {encje, kategoria, słowa kluczowe}
+    {+ analyze(text): NLPResult}};
+
+  \node[umlclass] (facts) at (14.4,1.2) {\classbox{FactPolicy}
+    {reguły dowodowe, cytowania}
+    {+ answer(question, chunks)}};
+
+  \node[umlclass] (store) at (19.2,1.2) {\classbox{VectorStore}
+    {SQLite, embedder, blokada}
+    {+ search(query, top\_k)\\+ add\_many(records)}};
+
+  \node[umlclass] (llm) at (14.6,-3.4) {\classbox{OllamaLLM}
+    {url, model}
+    {+ generate(question, chunks)}};
+
+  \node[umlclass] (ingest) at (0,-3.4) {\classbox{Ingestor}
+    {PDF, MD, TXT, podział na fragmenty}
+    {+ ingest\_pdf(path)\\+ ingest\_text(path)\\+ ingest\_path(path)}};
+
+  \node[umlclass] (embedder) at (7.3,-3.4) {\classbox{Embedder}
+    {Ollama, normalized-v1, hash fallback}
+    {+ embed\_many(texts)\\+ hash\_embed(text)}};
+
+  \node[umlclass] (audit) at (19.4,-3.4) {\classbox{AuditLogger}
+    {JSONL, lock, masked input}
+    {+ write(response, masked\_input)}};
+
+  \draw[relation] (telegram) -- (pipeline);
+  \draw[relation] (pipeline) -- node[above,font=\scriptsize]{zwraca} (response);
+  \draw[compose] (pipeline.south west) -- (privacy.north east);
+  \draw[compose] (pipeline.south west) -- (safety.north);
+  \draw[compose] (pipeline.south) -- (nlp.north);
+  \draw[compose] (pipeline.south east) -- (facts.north west);
+  \draw[compose] (pipeline.south east) -- (store.north west);
+  \draw[compose] (pipeline.south east) -- ++(0,-1.0) -| (llm.north);
+  \draw[compose] (pipeline.south east) -- ++(0,-1.0) -| (audit.north);
+  \draw[relation] (ingest) -- node[above,font=\scriptsize]{zasila} (store);
+  \draw[compose] (store.south) -- (embedder.north east);
+
+  \node[draw=grayline,dashed,rounded corners,fit=(privacy)(safety)(nlp)(facts)(store),
+    inner sep=3mm] {};
+\end{tikzpicture}
+\end{center}
+
+\vfill
+\small
+\textbf{Interpretacja.} Telegram przekazuje do fasady bieżącą wiadomość i maksymalnie trzy
+zamaskowane wpisy historii. Pipeline posiada komponenty bezpieczeństwa, NLP, retrieval,
+politykę faktograficzną i LLM. Ingestor obsługuje zarówno PDF, jak i kontrolowane źródła
+tekstowe. VectorStore przechowuje oryginalny tekst, metadane źródła i embedding, natomiast
+AuditLogger otrzymuje wyłącznie zamaskowane dane.
+
+\newpage
+{\Large\bfseries UML - diagram sekwencji obsługi wiadomości\par}
+\vspace{4mm}
+
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \def\top{6.4}
+  \def\bottom{-6.0}
+  \node[seqhead] (user) at (0,\top) {Użytkownik};
+  \node[seqhead] (telegram) at (2.75,\top) {Telegram Bot};
+  \node[seqhead] (pipe) at (5.5,\top) {Pipeline};
+  \node[seqhead] (privacy) at (8.25,\top) {Privacy Filter};
+  \node[seqhead] (guard) at (11,\top) {Bielik Guard};
+  \node[seqhead] (rag) at (13.75,\top) {VectorStore};
+  \node[seqhead] (facts) at (16.5,\top) {FactPolicy};
+  \node[seqhead] (ollama) at (19.25,\top) {Ollama LLM};
+  \node[seqhead] (audit) at (22,\top) {AuditLogger};
+
+  \foreach \n in {user,telegram,pipe,privacy,guard,rag,facts,ollama,audit}
+    \draw[dashed,draw=grayline] (\n.south) -- (\n.south |- 0,\bottom);
+
+  \draw[message] (user.south |- 0,5.5) -- node[above,font=\scriptsize]{wiadomość} (telegram.south |- 0,5.5);
+  \node[fill=green,rounded corners,font=\scriptsize,inner sep=1.5mm] at (2.75,4.85)
+    {wybór do 3 zamaskowanych wpisów historii};
+  \draw[message] (telegram.south |- 0,4.2) -- node[above,font=\scriptsize]{handle(text, context)} (pipe.south |- 0,4.2);
+
+  \draw[message] (pipe.south |- 0,3.5) -- node[above,font=\scriptsize]{analyze(text)} (privacy.south |- 0,3.5);
+  \draw[return] (privacy.south |- 0,3.0) -- node[above,font=\scriptsize]{masked text + PII} (pipe.south |- 0,3.0);
+  \draw[message] (pipe.south |- 0,2.35) -- node[above,font=\scriptsize]{analyze(masked text)} (guard.south |- 0,2.35);
+  \draw[return] (guard.south |- 0,1.85) -- node[above,font=\scriptsize]{category + confidence} (pipe.south |- 0,1.85);
+
+  \node[fill=orange,rounded corners,font=\scriptsize,inner sep=1.5mm] at (5.5,1.15)
+    {NER, domena, follow-up i normalizacja literówek};
+  \draw[message] (pipe.south |- 0,0.45) -- node[above,font=\scriptsize]{search(expanded query, 8)} (rag.south |- 0,0.45);
+  \draw[return] (rag.south |- 0,-0.05) -- node[above,font=\scriptsize]{PDF/TEXT candidates} (pipe.south |- 0,-0.05);
+  \draw[message] (pipe.south |- 0,-0.75) -- node[above,font=\scriptsize]{answer(query, candidates)} (facts.south |- 0,-0.75);
+  \draw[return] (facts.south |- 0,-1.25) -- node[above,font=\scriptsize]{answer lub brak reguły} (pipe.south |- 0,-1.25);
+
+  \node[fill=green,rounded corners,font=\scriptsize,inner sep=1.5mm] at (11,-2.0)
+    {jeżeli odpowiedź dowodowa istnieje - pomiń LLM};
+  \draw[message] (pipe.south |- 0,-2.7) -- node[above,font=\scriptsize]{prompt + top-3 chunks} (ollama.south |- 0,-2.7);
+  \draw[return] (ollama.south |- 0,-3.2) -- node[above,font=\scriptsize]{candidate answer} (pipe.south |- 0,-3.2);
+
+  \node[fill=redsoft,rounded corners,font=\scriptsize,inner sep=1.5mm] at (8.25,-3.95)
+    {grounding, Privacy Filter wyjścia, Bielik Guard wyjścia};
+  \draw[message] (pipe.south |- 0,-4.7) -- node[above,font=\scriptsize]{zamaskowane metadane i źródła} (audit.south |- 0,-4.7);
+  \draw[return] (pipe.south |- 0,-5.25) -- node[above,font=\scriptsize]{BotResponse + cytowania} (telegram.south |- 0,-5.25);
+  \draw[return] (telegram.south |- 0,-5.75) -- node[above,font=\scriptsize]{odpowiedź} (user.south |- 0,-5.75);
+\end{tikzpicture}
+\end{center}
+
+\vfill
+\small
+Ścieżki blokujące kończą przetwarzanie przed retrievalem albo generacją. Dotyczy to m.in.
+zablokowanego PII, treści niebezpiecznej, prompt injection i pytań spoza domeny. Jeżeli
+źródło nie wiąże podmiotu pytania z konkretną liczbą lub procedurą, system zwraca
+\texttt{insufficient\_context} zamiast łączyć niezależne fragmenty. Odpowiedź deterministyczna
+i odpowiedź LLM podlegają filtrom wyjściowym, a log audytowy nie zawiera surowej wiadomości.
+\end{landscape}
+
+\end{document}

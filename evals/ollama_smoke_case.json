@@ -1,0 +1,8 @@
+[
+  {
+    "id":"ollama_rights_smoke",
+    "group":"ollama",
+    "text":"Jakie podstawowe prawa ma student według regulaminu studiów?",
+    "expected_statuses":["answered"]
+  }
+]
