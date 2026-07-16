@@ -99,7 +99,7 @@ class AuditLogger:
         print("\n".join(lines), flush=True)
 
     def write(self, response: BotResponse, masked_input: str) -> None:
-        # Nigdy nie zapisujemy surowej wiadomości ani treści wykrytych spanów PII.
+
         record = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "trace_id": response.trace_id,
